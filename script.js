@@ -14,7 +14,6 @@ const inputValues = {
   professional: "",
 };
 
-
 const tabs = document.querySelectorAll(".tab");
 const taskInput = document.getElementById("taskInput");
 const taskList = document.getElementById("taskList");
@@ -73,7 +72,7 @@ addBtn.addEventListener("click", () => {
     completed: false,
   });
 
-  // 🔥 Save to localStorage
+  // Save to localStorage
   localStorage.setItem("tasks", JSON.stringify(tasks));
 
   taskInput.value = "";
@@ -97,6 +96,7 @@ function toggleTask(index) {
 
 /* Delete Task */
 function deleteTask(index) {
+  index = Number(index); // string to number conversion
   tasks[currentTab].splice(index, 1);
   localStorage.setItem("tasks", JSON.stringify(tasks));
   renderTasks();
@@ -109,76 +109,89 @@ clearBtn.addEventListener("click", () => {
   renderTasks();
 });
 
+taskList.addEventListener("dragover", (e) => {
+  e.preventDefault(); // allow drop
+});
+
+taskList.addEventListener("drop", (e) => {
+  e.preventDefault();
+
+  const fromIndex = e.dataTransfer.getData("text/plain");
+
+  const target = e.target.closest(".task");
+  if (!target) return;
+
+  const toIndex = target.dataset.index;
+
+  // Swap logic
+  const movedTask = tasks[currentTab].splice(fromIndex, 1)[0];
+  tasks[currentTab].splice(toIndex, 0, movedTask);
+
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+  renderTasks();
+});
+
 /* Render Tasks */
 function renderTasks() {
   taskList.innerHTML = "";
 
   const container = document.querySelector(".todo-container");
-
-  // 👇 Show / Hide logic
-  if (tasks[currentTab].length === 0) {
-    container.style.display = "none";
-  } else {
-    container.style.display = "block";
-  }
+  container.style.display = tasks[currentTab].length === 0 ? "none" : "block";
 
   tasks[currentTab].forEach((task, index) => {
     const div = document.createElement("div");
     div.className = "task";
+    div.dataset.index = index; // ✅ Always update dataset.index
 
     div.innerHTML = `
-  <div class="task-left">
-    <label class="custom-checkbox">
-      <input type="checkbox" ${task.completed ? "checked" : ""}>
-      <span class="checkmark"></span>
-    </label>
-    <span class="task-text ${task.completed ? "completed" : ""}">
-      ${task.text}
-    </span>
-  </div>
-  <i class="fa-regular fa-trash-can text-danger"></i>
-  `;
+      <div class="task-left">
+        <label class="custom-checkbox">
+          <input type="checkbox" ${task.completed ? "checked" : ""}>
+          <span class="checkmark"></span>
+        </label>
+        <span class="task-text ${task.completed ? "completed" : ""}">${task.text}</span>
+      </div>
+      <i class="fa-regular fa-trash-can text-danger"></i>
+    `;
 
     // Toggle complete
     div
       .querySelector("input")
       .addEventListener("change", () => toggleTask(index));
 
-    // Delete
-    div.querySelector("i").addEventListener("click", () => deleteTask(index));
+    // Delete task dynamically using dataset.index
+    div.querySelector("i").addEventListener("click", (e) => {
+      const idx = Number(e.target.closest(".task").dataset.index);
+      deleteTask(idx);
+    });
 
-    // Editable Task START
+    // Drag & Drop
+    div.setAttribute("draggable", true);
+    div.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", index);
+    });
+
+    // Editable
     const span = div.querySelector(".task-text");
-
     span.addEventListener("click", () => {
-      console.log("span click");
-
       const input = document.createElement("input");
       input.type = "text";
       input.value = task.text;
       input.className = "form-control";
-
       span.replaceWith(input);
       input.focus();
 
       const saveTask = () => {
         task.text = input.value.trim() || task.text;
-
         localStorage.setItem("tasks", JSON.stringify(tasks));
         renderTasks();
       };
 
-      // Enter press → save
       input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          saveTask();
-        }
+        if (e.key === "Enter") saveTask();
       });
-
-      // Click outside → save
       input.addEventListener("blur", saveTask);
     });
-    // Editable Task END
 
     taskList.appendChild(div);
   });

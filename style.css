@@ -162,6 +162,16 @@ body {
   opacity: 0.6;
 }
 
+.task {
+  cursor: grab;
+  transition: 0.3s;
+}
+
+.task:active {
+  cursor: grabbing;
+  opacity: 0.5;
+}
+
 /* Clear Button */
 .clear-btn {
   font-family: var(--font-poppins);
